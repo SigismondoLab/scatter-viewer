@@ -16,7 +16,7 @@ ui <- fluidPage(
                        "Select X,Y coordinates file", multiple = FALSE),
       textOutput("coordinate_status"),
       br(),
-      shinyFilesButton("meta_file", "Load META (.tsv)", 
+      shinyFilesButton("meta_file", "Load metadata (.tsv)", 
                        "Select metadata file", multiple = FALSE),
       textOutput("meta_status"),
       hr(),
@@ -89,7 +89,7 @@ server <- function(input, output, session) {
     }
   })
   
-  # File selection for META
+  # File selection for metadata
   observe({
     shinyFileChoose(input, "meta_file", roots = volumes(), session = session,
                     filetypes = c("tsv", "txt"))
@@ -105,7 +105,7 @@ server <- function(input, output, session) {
           # Update last directory for next file selection
           last_directory(dirname(as.character(file_path$datapath)))
         }, error = function(e) {
-          showNotification(paste("Error loading META file:", e$message), type = "error")
+          showNotification(paste("Error loading metadata file:", e$message), type = "error")
         })
       }
     }
@@ -113,16 +113,16 @@ server <- function(input, output, session) {
   
   output$meta_status <- renderText({
     if (is.null(meta_data())) {
-      "No META file loaded"
+      "No metadata file loaded"
     } else {
-      paste("META loaded:", ncol(meta_data()), "columns,", nrow(meta_data()), "rows")
+      paste("metadata loaded:", ncol(meta_data()), "columns,", nrow(meta_data()), "rows")
     }
   })
   
   # Color column selector
   output$color_selector <- renderUI({
     if (is.null(meta_data())) {
-      return(helpText("Load META file to enable coloring"))
+      return(helpText("Load metadata file to enable coloring"))
     }
     selectInput("color_column", "Select column:", 
                 choices = c("None" = "", colnames(meta_data())),
@@ -132,7 +132,7 @@ server <- function(input, output, session) {
   # Hover fields selector
   output$hover_selector <- renderUI({
     if (is.null(meta_data())) {
-      return(helpText("Load META file to select hover fields"))
+      return(helpText("Load metadata file to select hover fields"))
     }
     checkboxGroupInput("hover_fields", NULL,
                        choices = colnames(meta_data()),
