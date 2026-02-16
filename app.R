@@ -228,7 +228,7 @@ observeEvent(input$meta_file, {
         values <- sapply(fields, function(f) paste0(f, ": ", meta[i, f]))
         paste(values, collapse = "<br>")
       })
-      p <- p %>% add_trace(text = hover_text, hoverinfo = "text")
+      p <- p %>% add_trace(text = hover_text, hoverinfo = "text", showlegend = FALSE)
     } else {
       log_coordinate_plot("hover text not added")
     }
