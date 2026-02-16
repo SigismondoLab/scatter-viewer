@@ -3,6 +3,7 @@ library(shinyFiles)
 library(plotly)
 library(RColorBrewer)
 library(viridis)
+library(arrow)
 
 # Define UI
 ui <- fluidPage(
@@ -12,11 +13,11 @@ ui <- fluidPage(
     sidebarPanel(
       width = 3,
       h4("Load Data Files"),
-      shinyFilesButton("coordinate_file", "Load coordinate (.tsv)", 
+      shinyFilesButton("coordinate_file", "Load coordinate (.tsv/.parquet)", 
                        "Select X,Y coordinates file", multiple = FALSE),
       textOutput("coordinate_status"),
       br(),
-      shinyFilesButton("meta_file", "Load metadata (.tsv)", 
+      shinyFilesButton("meta_file", "Load metadata (.tsv/.parquet)", 
                        "Select metadata file", multiple = FALSE),
       textOutput("meta_status"),
       hr(),
@@ -44,6 +45,23 @@ server <- function(input, output, session) {
   coordinate_data <- reactiveVal(NULL)
   meta_data <- reactiveVal(NULL)
   last_directory <- reactiveVal(NULL)
+
+  read_data_file <- function(path) {
+    ext <- tolower(tools::file_ext(path))
+
+    if (ext %in% c("tsv")) {
+      return(read.delim(path, sep = "\t"))
+    }
+
+    if (ext == "parquet") {
+      if (!requireNamespace("arrow", quietly = TRUE)) {
+        stop("Package 'arrow' is required to read .parquet files. Install it with install.packages('arrow').")
+      }
+      return(as.data.frame(arrow::read_parquet(path)))
+    }
+
+    stop("Unsupported file extension. Use .tsv, .txt, or .parquet")
+  }
   
   # Set up file browser with dynamic volumes
   volumes <- reactive({
@@ -58,7 +76,7 @@ server <- function(input, output, session) {
   # File selection for coordinate
   observe({
     shinyFileChoose(input, "coordinate_file", roots = volumes(), session = session,
-                    filetypes = c("tsv", "txt"))
+                    filetypes = c("tsv", "parquet"))
   })
   
   observeEvent(input$coordinate_file, {
@@ -66,7 +84,7 @@ server <- function(input, output, session) {
       file_path <- parseFilePaths(volumes(), input$coordinate_file)
       if (nrow(file_path) > 0) {
         tryCatch({
-          data <- read.delim(as.character(file_path$datapath), sep = "\t")
+          data <- read_data_file(as.character(file_path$datapath))
           if (!all(c("X", "Y") %in% colnames(data))) {
             showNotification("Error: coordinate file must have 'X' and 'Y' columns", type = "error")
           } else {
@@ -81,6 +99,22 @@ server <- function(input, output, session) {
     }
   })
   
+observeEvent(input$meta_file, {
+    if (!is.integer(input$meta_file)) {
+      file_path <- parseFilePaths(volumes(), input$meta_file)
+      if (nrow(file_path) > 0) {
+        tryCatch({
+          data <- read_data_file(as.character(file_path$datapath))
+          meta_data(data)
+          # Update last directory for next file selection
+          last_directory(dirname(as.character(file_path$datapath)))
+        }, error = function(e) {
+          showNotification(paste("Error loading metadata file:", e$message), type = "error")
+        })
+      }
+    }
+  })
+
   output$coordinate_status <- renderText({
     if (is.null(coordinate_data())) {
       "No coordinate file loaded"
@@ -92,24 +126,10 @@ server <- function(input, output, session) {
   # File selection for metadata
   observe({
     shinyFileChoose(input, "meta_file", roots = volumes(), session = session,
-                    filetypes = c("tsv", "txt"))
+                    filetypes = c("tsv", "parquet"))
   })
   
-  observeEvent(input$meta_file, {
-    if (!is.integer(input$meta_file)) {
-      file_path <- parseFilePaths(volumes(), input$meta_file)
-      if (nrow(file_path) > 0) {
-        tryCatch({
-          data <- read.delim(as.character(file_path$datapath), sep = "\t")
-          meta_data(data)
-          # Update last directory for next file selection
-          last_directory(dirname(as.character(file_path$datapath)))
-        }, error = function(e) {
-          showNotification(paste("Error loading metadata file:", e$message), type = "error")
-        })
-      }
-    }
-  })
+  
   
   output$meta_status <- renderText({
     if (is.null(meta_data())) {

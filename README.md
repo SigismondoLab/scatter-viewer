@@ -17,7 +17,7 @@ A simple Shiny app for visualizing 2D scatter plots (e.g., UMAP, t-SNE) with met
 Create a conda environment with R and required packages:
 
 ```bash
-conda create -n umap_viewer -c nodefaults -c conda-forge r-essentials r-base r-shinyfiles r-shiny r-plotly r-rcolorbrewer r-viridis
+conda create -n umap_viewer -c nodefaults -c conda-forge r-essentials r-base r-shinyfiles r-shiny r-plotly r-rcolorbrewer r-viridis r-arrow
 
 ```
 
@@ -26,7 +26,7 @@ conda create -n umap_viewer -c nodefaults -c conda-forge r-essentials r-base r-s
 Open R or RStudio and run:
 
 ```r
-install.packages(c("shiny", "shinyFiles", "plotly", "RColorBrewer", "viridis"))
+install.packages(c("shiny", "shinyFiles", "plotly", "RColorBrewer", "viridis", "arrow"))
 ```
 
 ## Usage
@@ -54,7 +54,7 @@ The app will open in your default web browser.
 ### Input File Format
 
 **Coordinate file (coordinate.tsv):**
-- Tab-separated file with columns `X` and `Y`
+- Tab-separated or `.parquet` file with columns `X` and `Y`
 - Example:
 ```
 X	Y
@@ -64,7 +64,7 @@ X	Y
 ```
 
 **Metadata file (meta.tsv):**
-- Tab-separated file with any number of columns
+- Tab-separated  or `.parquet` file with any number of columns
 - Must have the same number of rows as the coordinate file
 - Example:
 ```
