@@ -142,9 +142,19 @@ server <- function(input, output, session) {
   # Generate coordinate plot
   output$coordinate_plot <- renderPlotly({
     req(coordinate_data())
+
+    log_coordinate_plot <- function(msg) {
+      message(sprintf("[coordinate_plot] %s", msg))
+    }
     
     coordinate <- coordinate_data()
     meta <- meta_data()
+    log_coordinate_plot(sprintf(
+      "render start: coordinate_rows=%d, meta_rows=%s, color_column=%s",
+      nrow(coordinate),
+      if (is.null(meta)) "NULL" else as.character(nrow(meta)),
+      if (is.null(input$color_column) || input$color_column == "") "None" else input$color_column
+    ))
     
     # Prepare plot data
     plot_data <- data.frame(X = coordinate$X, Y = coordinate$Y)
@@ -158,43 +168,52 @@ server <- function(input, output, session) {
       if (is.numeric(color_col)) {
         # Check if diverging (has positive and negative)
         if (any(color_col < 0, na.rm = TRUE) && any(color_col > 0, na.rm = TRUE)) {
+          log_coordinate_plot("using diverging numeric color scale")
           # Diverging colormap
-          p <- plot_ly(plot_data, x = ~X, y = ~Y, type = "coordinate", mode = "markers",
+          p <- plot_ly(plot_data, x = ~X, y = ~Y, type = "scatter", mode = "markers",
                        color = ~color_val, colors = colorRamp(c("blue", "white", "red")),
                        marker = list(size = 5))
         } else {
+          log_coordinate_plot("using sequential numeric color scale")
           # Non-diverging colormap (positive only)
-          p <- plot_ly(plot_data, x = ~X, y = ~Y, type = "coordinate", mode = "markers",
+          p <- plot_ly(plot_data, x = ~X, y = ~Y, type = "scatter", mode = "markers",
                        color = ~color_val, colors = viridis(100),
                        marker = list(size = 5))
         }
       } else {
         # Categorical colormap
         n_categories <- length(unique(color_col))
+        log_coordinate_plot(sprintf("using categorical color scale with %d categories", n_categories))
         if (n_categories <= 12) {
           colors <- brewer.pal(min(n_categories, 12), "Set3")
         } else {
           colors <- rainbow(min(n_categories, 30))
         }
-        p <- plot_ly(plot_data, x = ~X, y = ~Y, type = "coordinate", mode = "markers",
+        p <- plot_ly(plot_data, x = ~X, y = ~Y, type = "scatter", mode = "markers",
                      color = ~as.factor(color_val), colors = colors,
                      marker = list(size = 5))
       }
     } else {
+      log_coordinate_plot("no color column selected; using default marker color")
       # No coloring
-      p <- plot_ly(plot_data, x = ~X, y = ~Y, type = "coordinate", mode = "markers",
+      p <- plot_ly(plot_data, x = ~X, y = ~Y, type = "scatter", mode = "markers",
                    marker = list(size = 5, color = "steelblue"))
     }
     
     # Add hover text with selected metadata fields
     if (!is.null(meta) && !is.null(input$hover_fields) && length(input$hover_fields) > 0) {
+      log_coordinate_plot(sprintf("building hover text for %d fields", length(input$hover_fields)))
       hover_text <- sapply(1:nrow(meta), function(i) {
         fields <- input$hover_fields
         values <- sapply(fields, function(f) paste0(f, ": ", meta[i, f]))
         paste(values, collapse = "<br>")
       })
       p <- p %>% add_trace(text = hover_text, hoverinfo = "text")
+    } else {
+      log_coordinate_plot("hover text not added")
     }
+
+    log_coordinate_plot("render complete")
     
     p %>% layout(
       xaxis = list(title = "X"),
